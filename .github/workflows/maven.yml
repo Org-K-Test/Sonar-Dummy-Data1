@@ -1,4 +1,4 @@
-name: Java CI with Maven, Docker and SonarCloud in Linux
+name: Maven
 
 on:
   push:
@@ -6,6 +6,8 @@ on:
 
 jobs:
   build:
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     runs-on: ubuntu-latest
 
     steps:
@@ -25,13 +27,22 @@ jobs:
           ~/.sonar/cache
         key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml', '**/*.yml') }}
         restore-keys: ${{ runner.os }}-m2-
+    - name: Set Maven Additional Goals
+      run: |
+        echo "SONARGOAL=sonar:sonar" >> $GITHUB_ENV
+      if: ${{ env.SONAR_TOKEN }}
     - name: Build with Maven and SonarCloud
       run: >
-        xvfb-run mvn verify -Pjacoco sonar:sonar
+        xvfb-run mvn test -Pjacoco $SONARGOAL
         -Dsonar.organization=lorenzobettini-github
         -Dsonar.host.url=https://sonarcloud.io
       working-directory: com.examples.school
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
+    - name: Store Build
+      uses: actions/upload-artifact@v2
+      with:
+        name: pr
+        path: ./
+      if: ${{ env.SONAR_TOKEN == '' }}
